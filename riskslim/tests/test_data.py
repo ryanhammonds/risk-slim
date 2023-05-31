@@ -35,11 +35,11 @@ def test_ClassificationDataset():
 def test_bounds():
 
     bounds = Bounds(objval_min=0., objval_max=1., loss_min=0., loss_max=1.,
-                    L0_min=1, L0_max=10)
+                    min_size=1, max_size=10)
 
     assert bounds.objval_min == bounds.loss_min == 0.
     assert bounds.objval_max == bounds.loss_max == 1.
-    assert bounds.L0_min == 1 and bounds.L0_max == 10
+    assert bounds.min_size == 1 and bounds.max_size == 10
 
     bounds = bounds.asdict()
     assert isinstance(bounds, dict)

@@ -80,8 +80,8 @@ def test_round_solution_pool(generated_normal_data):
     coef_set = CoefficientSet(variable_names)
 
     constraints = {
-        "L0_min": 0,
-        "L0_max": 10,
+        "min_size": 0,
+        "max_size": 10,
         "coef_set": coef_set,
     }
 
@@ -150,8 +150,8 @@ def test_discrete_descent_solution_pool(generated_normal_data, non_integral):
     coef_set = CoefficientSet(variable_names)
 
     constraints = {
-        "L0_min": 0,
-        "L0_max": 10,
+        "min_size": 0,
+        "max_size": 10,
         "coef_set": coef_set,
     }
 

@@ -4,7 +4,7 @@ import pprint
 import pytest
 
 import numpy as np
-import riskslim
+from riskslim import RiskSLIMOptimizer, CoefficientSet, load_data_from_csv
 
 # Dataset Strategy
 #
@@ -34,10 +34,6 @@ data_csv_file = data_dir + data_name + '_data.csv'  # csv file for the dataset
 sample_weights_csv_file = None  # csv file of sample weights for the dataset (optional)
 
 default_settings = {
-    #
-    'c0_value': 1e-6,
-    'w_pos': 1.00,
-    #
     # LCPA Settings
     'max_runtime': 300.0,                               # max runtime for LCPA
     'max_tolerance': np.finfo('float').eps,             # tolerance to stop LCPA (set to 0 to return provably optimal solution)
@@ -77,7 +73,6 @@ default_settings = {
     'init_max_iterations': 10000,                       # max # of cuts needed to stop CPA
     'init_max_tolerance': 0.0001,                       # tolerance of solution to stop CPA
     'init_max_runtime_per_iteration': 300.0,            # max time per iteration of CPA
-    'init_max_cplex_time_per_iteration': 10.0,          # max time per iteration to solve surrogate problem in CPA
     #
     'init_use_sequential_rounding': True,               # use SeqRd in initialization procedure
     'init_sequential_rounding_max_runtime': 30.0,       # max runtime for SeqRd in initialization procedure
@@ -98,16 +93,17 @@ default_settings = {
 def test_risk_slim(max_coefficient, max_L0_value, max_offset):
 
     # Load dataset
-    data = riskslim.load_data_from_csv(
+    data = load_data_from_csv(
         dataset_csv_file=data_csv_file, sample_weights_csv_file=sample_weights_csv_file
     )
 
     N, P = data['X'].shape
 
     # Offset value
-    coef_set = riskslim.CoefficientSet(
+    coef_set = CoefficientSet(
         variable_names=data['variable_names'],
-        lb=-max_coefficient, ub=max_coefficient
+        lb=-max_coefficient,
+        ub=max_coefficient
     )
 
     coef_set.update_intercept_bounds(
@@ -115,21 +111,21 @@ def test_risk_slim(max_coefficient, max_L0_value, max_offset):
     )
 
     # Create constraint dictionary
-    trivial_L0_max = P - np.sum(coef_set.C_0j == 0)
-    max_L0_value = min(max_L0_value, trivial_L0_max)
+    trivial_max_size = P - np.sum(coef_set.C_0j == 0)
+    max_L0_value = min(max_L0_value, trivial_max_size)
 
     # Train model using lattice_cpa
-    rs = riskslim.RiskSLIM(
-        coef_set=coef_set, L0_min=0, L0_max=max_L0_value, settings=default_settings
+    rs = RiskSLIMOptimizer(
+        coef_set=coef_set, min_size=0, max_size=max_L0_value, **default_settings
     )
-    rs.fit(data['X'], y = data['y'])
+    rs.optimize(data['X'], y=data['y'])
 
     # Model info contains key results
     pprint.pprint(rs.solution_info)
 
 
-    assert rs.L0_min == rs.bounds.L0_min == 0
-    assert rs.L0_max == rs.bounds.L0_max == max_L0_value
+    assert rs.min_size == rs.bounds.min_size == 0
+    assert rs.max_size == rs.bounds.max_size == max_L0_value
     assert rs.coef_set == coef_set
 
     # Each column of X has a rho and alpha (except for intercept,

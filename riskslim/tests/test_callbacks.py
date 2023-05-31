@@ -5,8 +5,8 @@ import numpy as np
 from riskslim.solution_pool import FastSolutionPool
 from riskslim.coefficient_set import CoefficientSet
 from riskslim.heuristics import discrete_descent, sequential_rounding
-from riskslim import RiskSLIM
-from riskslim.fit.callbacks import LossCallback, PolishAndRoundCallback
+from riskslim import RiskSLIMOptimizer
+from riskslim.callbacks import LossCallback, PolishAndRoundCallback
 
 
 @pytest.mark.parametrize('cut_queue', [None, FastSolutionPool(12)])
@@ -19,7 +19,7 @@ def test_losscallback(generated_normal_data, cut_queue, polish_queue):
     variable_names = generated_normal_data['variable_names']
 
     coef_set = CoefficientSet(variable_names)
-    rs = RiskSLIM(coef_set=coef_set, L0_min=0, L0_max=10)
+    rs = RiskSLIMOptimizer(coef_set=coef_set, min_size=0, max_size=10)
 
     # Set data attributes
     rs.X = X
@@ -27,8 +27,8 @@ def test_losscallback(generated_normal_data, cut_queue, polish_queue):
     rs.variable_names = variable_names
     rs.outcome_name = None
     rs.sample_weights = None
-    rs.init_fit()
-    rs.init_mip()
+    rs._init_fit()
+    rs._init_mip()
     rs.warmstart()
 
     # Initialize solution queues
@@ -66,7 +66,7 @@ def test_polish_and_round_callback(generated_normal_data):
     variable_names = generated_normal_data['variable_names']
 
     coef_set = CoefficientSet(variable_names)
-    rs = RiskSLIM(coef_set=coef_set, L0_min=0, L0_max=10)
+    rs = RiskSLIMOptimizer(coef_set=coef_set, min_size=0, max_size=10)
 
     # Set data attributes
     rs.X = X
@@ -74,8 +74,8 @@ def test_polish_and_round_callback(generated_normal_data):
     rs.variable_names = variable_names
     rs.outcome_name = None
     rs.sample_weights = None
-    rs.init_fit()
-    rs.init_mip()
+    rs._init_fit()
+    rs._init_mip()
     rs.warmstart()
 
     # Initialize solution queues
@@ -86,8 +86,8 @@ def test_polish_and_round_callback(generated_normal_data):
         rho,
         rs.Z,
         rs.C_0,
-        rs.rho_max,
-        rs.rho_min,
+        rs.max_coef,
+        rs.min_coef,
         rs.get_L0_penalty,
         rs.compute_loss_from_scores,
         True,

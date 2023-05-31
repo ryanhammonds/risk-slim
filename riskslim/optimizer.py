@@ -92,7 +92,7 @@ class RiskSLIMOptimizer:
         self.initial_cuts = None
 
         # Handle kwargs
-        self.vtype = kwargs.pop("vtype", None)
+        self.vtype = kwargs.pop("vtype", "I")
         self.coef_set = kwargs.pop("coef_set", None)
         settings = kwargs
 

@@ -54,7 +54,7 @@ def generated_data():
     weights = np.ones(len(X))
 
     # Create lookup table
-    min_score, max_score = get_score_bounds(Z_min, Z_max, rho_lb, rho_ub, L0_max=n_cols)
+    min_score, max_score = get_score_bounds(Z_min, Z_max, rho_lb, rho_ub, max_size=n_cols)
 
     loss_value_tbl, prob_value_tbl, loss_tbl_offset = \
             lookup.get_loss_value_and_prob_tables(min_score, max_score)

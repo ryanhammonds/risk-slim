@@ -7,7 +7,7 @@ from scipy import sparse
 from cplex import Cplex
 from riskslim.coefficient_set import CoefficientSet
 from riskslim.data import Bounds, Stats
-from riskslim.fit import RiskSLIM
+from riskslim import RiskSLIMOptimizer
 
 
 @pytest.mark.parametrize('init_coef', [True, False])
@@ -17,13 +17,18 @@ def test_RiskSLIM_init(init_coef):
 
     coef_set = CoefficientSet(variable_names) if init_coef else None
 
-    L0_min=0
-    L0_max=10
+    min_size=0
+    max_size=10
 
-    rs = RiskSLIM(coef_set=coef_set, L0_min=L0_min, L0_max=L0_max)
+    rs = RiskSLIMOptimizer(
+        coef_set=coef_set,
+        min_size=min_size,
+        max_size=max_size,
+        variable_names=variable_names
+    )
 
-    assert rs.L0_min == L0_min
-    assert rs.L0_max == L0_max
+    assert rs.min_size == min_size
+    assert rs.max_size == max_size
     assert rs.X is None
     assert rs.y is None
 
@@ -33,11 +38,11 @@ def test_RiskSLIM_init(init_coef):
         expected_type = (float, int, np.ndarray)
         assert rs.variable_names == variable_names
     else:
-        expected_type = (type(None), float)
+        expected_type = (type(None), float, list)
         assert type_check(rs.variable_names, expected_type)
 
-    assert type_check(rs.rho_min, expected_type)
-    assert type_check(rs.rho_max, expected_type)
+    assert type_check(rs.min_coef, expected_type)
+    assert type_check(rs.max_coef, expected_type)
     assert type_check(rs.c0_value, expected_type)
     assert type_check(rs.L0_reg_ind, expected_type)
     assert type_check(rs.C_0, expected_type)
@@ -52,7 +57,7 @@ def test_RiskSLIM_init_fit(generated_normal_data, use_coef_set):
     variable_names = generated_normal_data['variable_names']
 
     coef_set = CoefficientSet(variable_names) if use_coef_set else None
-    rs = RiskSLIM(coef_set=coef_set, L0_min=0, L0_max=10)
+    rs = RiskSLIMOptimizer(coef_set=coef_set, min_size=0, max_size=10)
 
     # Load data into attribute
     #   this is normally done in .fit
@@ -62,13 +67,13 @@ def test_RiskSLIM_init_fit(generated_normal_data, use_coef_set):
     rs.outcome_name = None
     rs.sample_weights = None
 
-    rs.init_fit()
-    rs.init_mip()
+    rs._init_fit()
+    rs._init_mip()
 
     # Checks
     assert isinstance(rs.coef_set, CoefficientSet)
-    assert isinstance(rs.rho_min, np.ndarray)
-    assert isinstance(rs.rho_max, np.ndarray)
+    assert isinstance(rs.min_coef, np.ndarray)
+    assert isinstance(rs.max_coef, np.ndarray)
 
     assert isinstance(rs.mip, Cplex)
     assert isinstance(rs.mip_indices, dict)
@@ -97,7 +102,7 @@ def test_RiskSLIM_init_loss(generated_normal_data, loss_computation):
         coef_set = None
 
     settings = {'loss_computation': loss_computation}
-    rs = RiskSLIM(coef_set=coef_set, L0_min=0, L0_max=10, settings=settings)
+    rs = RiskSLIMOptimizer(coef_set=coef_set, min_size=0, max_size=10, **settings)
 
     # Load data into attribute
     #   this is normally done in .fit
@@ -110,8 +115,8 @@ def test_RiskSLIM_init_loss(generated_normal_data, loss_computation):
     if loss_computation == 'weighted':
         rs.sample_weights = np.random.rand(len(X))
 
-    rs.init_fit()
-    rs.init_mip()
+    rs._init_fit()
+    rs._init_mip()
 
     rs.coef_set = coef_set
     rs._init_loss_computation()
@@ -149,7 +154,7 @@ def test_RiskSLIM_warmstart(generated_normal_data, use_rounding, polishing_after
 
     coef_set = CoefficientSet(variable_names=variable_names, lb=lb, ub=ub)
 
-    rs = RiskSLIM(coef_set=coef_set, L0_min=0, L0_max=5)
+    rs = RiskSLIMOptimizer(coef_set=coef_set, min_size=0, max_size=5)
 
     # Load data into attribute
     #   this is normally done in .fit
@@ -160,8 +165,8 @@ def test_RiskSLIM_warmstart(generated_normal_data, use_rounding, polishing_after
     rs.sample_weights = None
 
     # Initalize fitting procedure
-    rs.init_fit()
-    rs.init_mip()
+    rs._init_fit()
+    rs._init_mip()
 
     # Test warm start
     if use_rounding or polishing_after:
@@ -194,8 +199,6 @@ def test_RiskSLIM_fit(generated_normal_data, polish_flag):
 
     # Settings
     settings = {
-        # Problem Parameters
-        'c0_value': c0_value,
         # LCPA Settings
         'max_runtime': 2,
         'max_tolerance': np.finfo('float').eps,
@@ -228,23 +231,19 @@ def test_RiskSLIM_fit(generated_normal_data, polish_flag):
         ub[0] = 0.
 
         # Initalize
-        rs = RiskSLIM(L0_min=0, L0_max=10, rho_min=lb, rho_max=ub, c0_value=c0_value,
-                      settings=settings)
-
-        if ind == 0:
-            # Ensure printable
-            rs.print_model()
-            with pytest.raises(ValueError):
-                rs.print_solution()
+        rs = RiskSLIMOptimizer(
+            min_size=0,
+            max_size=10,
+            min_coef=lb,
+            max_coef=ub,
+            c0_value=c0_value,
+            variable_names=variable_names,
+            **settings
+        )
 
         # Fit
-        rs.fit(X[ind], y, variable_names=variable_names)
+        rs.optimize(X[ind], y)
         assert rs.fitted
-
-        if ind == 0:
-            # Ensure printable
-            rs.print_model()
-            rs.print_solution()
 
         # Get solutions
         solutions[ind] = rs.solution_info['solution']
@@ -274,13 +273,3 @@ def test_RiskSLIM_fit(generated_normal_data, polish_flag):
     assert isinstance(rs.coefficients, np.ndarray)
     assert len(rs.coefficients) == X[ind].shape[1]
     assert isinstance(rs.solution_info['solution'], np.ndarray)
-
-    # Test scikit-learn methods
-    y_pred = rs.predict(X[0])
-    assert len(y_pred) == len(X[0])
-
-    proba = rs.predict_proba(X)
-    assert np.all((proba >= 0) & (proba <= 1))
-
-    log_proba = rs.predict_log_proba(X)
-    assert np.all(log_proba.max() <= 0)

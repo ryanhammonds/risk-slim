@@ -185,13 +185,13 @@ def test_get_score_bounds(use_L0):
     rho_ub = np.repeat(-5, 10)
 
     L0_reg_ind = None
-    L0_max = None
+    max_size = None
     if use_L0:
         L0_reg_ind = np.ones(10).astype(int)
-        L0_max = 1
+        max_size = 1
 
     s_min, s_max = get_score_bounds(
-        Z_min, Z_max, rho_lb, rho_ub, L0_reg_ind=L0_reg_ind, L0_max=L0_max
+        Z_min, Z_max, rho_lb, rho_ub, L0_reg_ind=L0_reg_ind, max_size=max_size
     )
 
     assert s_min <= s_max
